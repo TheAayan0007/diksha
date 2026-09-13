@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FEAR — encrypt, read, and decrypt files privately</title>
+<meta name="description" content="Encrypt, read, and decrypt files entirely in your browser. Nothing is ever uploaded." />
+<style>
+  :root {
+    --bg: #F7F8F6;
+    --surface: #FFFFFF;
+    --text: #1A1D1A;
+    --text-muted: #5B615C;
+    --text-faint: #8A9089;
+    --border: #E1E4DF;
+    --border-strong: #C9CDC5;
+    --accent: #1F5C43;
+    --accent-hover: #174934;
+    --accent-soft: #E7F0EB;
+    --warn: #A66A1E;
+    --warn-soft: #FBF1E4;
+    --danger: #B3261E;
+    --danger-soft: #FBEAE8;
+    --radius: 10px;
+    --radius-sm: 7px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100vh;
+    padding: 56px 20px 80px;
+  }
+
+  .wrap {
+    max-width: 620px;
+    margin: 0 auto;
+  }
+
+  /* ---------- header ---------- */
+
+  header { margin-bottom: 32px; }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .brand-name {
+    font-size: 19px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  .tagline {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text-muted);
+    max-width: 46ch;
+  }
+
+  /* ---------- tabs ---------- */
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 20px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font);
+    font-size: 14.5px;
+    font-weight: 600;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+  }
+
+  .tab-btn:hover { color: var(--text); }
+
+  .tab-btn[aria-selected="true"] {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .tab-btn:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ---------- panel / card ---------- */
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+
+  .card + .card { margin-top: 16px; }
+
+  .section-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+  }
+
+  /* ---------- dropzone ---------- */
+
+  .dropzone {
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease;
+    background: var(--bg);
+  }
+
+  .dropzone:hover { border-color: var(--accent); }
+
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .dropzone.has-file {
+    border-style: solid;
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .dropzone svg { display: block; margin: 0 auto 10px; color: var(--text-faint); }
+  .dropzone.has-file svg { color: var(--accent); }
+
+  .dropzone-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 3px;
+  }
+
+  .dropzone-hint {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .dropzone-hint .link { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+
+  .dropzone-file {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    margin: 2px 0 0;
+    word-break: break-all;
+  }
+
+  .dropzone-clear {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font);
+    padding: 2px;
+  }
+  .dropzone-clear:hover { color: var(--text); }
+
+  /* ---------- fields ---------- */
+
+  .field { margin-top: 18px; }
+
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .input-row { position: relative; }
+
+  input[type="password"],
+  input[type="text"] {
+    width: 100%;
+    font-family: var(--font);
+    font-size: 15px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 40px 11px 13px;
+    transition: border-color .15s ease;
+  }
+
+  input[type="password"]:focus,
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .eye-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-faint);
+    border-radius: 6px;
+  }
+  .eye-btn:hover { color: var(--text-muted); }
+
+  /* ---------- strength meter ---------- */
+
+  .strength {
+    margin-top: 9px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .strength-bar {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .strength-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 2px;
+    background: var(--danger);
+    transition: width .2s ease, background-color .2s ease;
+  }
+
+  .strength-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-faint);
+    min-width: 78px;
+    text-align: right;
+  }
+
+  /* ---------- buttons ---------- */
+
+  .btn {
+    appearance: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background-color .15s ease, opacity .15s ease;
+  }
+
+  .btn-primary {
+    width: 100%;
+    margin-top: 22px;
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-primary:disabled { opacity: .55; cursor: default; }
+
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--border-strong); }
+
+  /* ---------- status ---------- */
+
+  .status {
+    display: none;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 11px 13px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  .status.visible { display: flex; }
+  .status svg { flex-shrink: 0; margin-top: 1px; }
+  .status.info { background: var(--accent-soft); color: var(--accent-hover); }
+  .status.error { background: var(--danger-soft); color: var(--danger); }
+  .status.success { background: var(--accent-soft); color: var(--accent-hover); }
+
+  /* ---------- read viewer ---------- */
+
+  .viewer { margin-top: 20px; }
+
+  .viewer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .viewer-filename {
+    font-size: 14.5px;
+    font-weight: 600;
+    word-break: break-all;
+  }
+
+  .viewer-body {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .viewer-body img,
+  .viewer-body video {
+    display: block;
+    width: 100%;
+    max-height: 480px;
+    object-fit: contain;
+    background: #0d0f0e;
+  }
+
+  .viewer-audio-wrap {
+    padding: 28px 20px;
+  }
+  .viewer-audio-wrap audio { width: 100%; }
+
+  .viewer-text {
+    margin: 0;
+    padding: 16px 18px;
+    max-height: 420px;
+    overflow: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .viewer-generic {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px;
+  }
+  .viewer-generic svg { flex-shrink: 0; color: var(--text-faint); }
+  .viewer-generic-name { font-size: 14.5px; font-weight: 600; word-break: break-all; }
+  .viewer-generic-meta { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+  .viewer-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .viewer-actions .btn { margin-top: 0; width: auto; }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    max-width: 620px;
+    margin: 28px auto 0;
+    padding: 0 2px;
+  }
+
+  footer p {
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--text-faint);
+    margin: 0 0 8px;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 36px 14px 60px; }
+    .card { padding: 18px; }
+    .tab-btn { font-size: 13.5px; padding: 10px 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect x="2" y="7" width="17" height="17" rx="5" fill="#1F5C43" opacity="0.28"/>
+        <rect x="9" y="4" width="17" height="17" rx="5" fill="#1F5C43"/>
+      </svg>
+      <span class="brand-name">FEAR</span>
+    </div>
+    <p class="tagline">Encrypt, read, and decrypt files entirely in your browser, using AES‑256‑GCM. Nothing is uploaded — this page makes no network requests.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Mode">
+    <button class="tab-btn" role="tab" id="tab-btn-encrypt" aria-selected="true" aria-controls="panel-encrypt" data-tab="encrypt">Encrypt</button>
+    <button class="tab-btn" role="tab" id="tab-btn-read" aria-selected="false" aria-controls="panel-read" data-tab="read">Read</button>
+    <button class="tab-btn" role="tab" id="tab-btn-decrypt" aria-selected="false" aria-controls="panel-decrypt" data-tab="decrypt">Decrypt</button>
+  </div>
+
+  <!-- ================= ENCRYPT ================= -->
+  <section id="panel-encrypt" class="panel active" role="tabpanel" aria-labelledby="tab-btn-encrypt">
+    <div class="card">
+      <p class="section-label">File</p>
+      <div class="dropzone" id="encrypt-dropzone" tabindex="0" role="button" aria-label="Choose a file to encrypt">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        <p class="dropzone-title" id="encrypt-dz-title">Drag a file here</p>
+        <p class="dropzone-hint" id="encrypt-dz-hint">or <span class="link">choose a file</span></p>
+        <input type="file" id="encrypt-file-input" class="visually-hidden" />
+      </div>
+
+      <div class="field">
+        <label for="encrypt-password">Password</label>
+        <div class="input-row">
+          <input type="password" id="encrypt-password" autocomplete="new-password" placeholder="Enter a password" />
+          <button type="button" class="eye-btn" data-target="encrypt-password" aria-label="Show password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="strength" id="encrypt-strength" style="display:none;">
+          <div class="strength-bar"><div class="strength-fill" id="encrypt-strength-fill"></div></div>
+          <span class="strength-label" id="encrypt-strength-label"></span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="encrypt-password-confirm">Confirm password</label>
+        <div class="input-row">
+          <input type="password" id="encrypt-password-confirm" autocomplete="new-password" placeholder="Re-enter the password" />
+          <button type="button" class="eye-btn" data-target="encrypt-password-confirm" aria-label="Show password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="encrypt-submit">Encrypt file</button>
+
+      <div class="status" id="encrypt-status"></div>
+    </div>
+  </section>
+
+  <!-- ================= READ ================= -->
+  <section id="panel-read" class="panel" role="tabpanel" aria-labelledby="tab-btn-read">
+    <div class="card">
+      <p class="section-label">Encrypted file</p>
+      <div class="dropzone" id="read-dropzone" tabindex="0" role="button" aria-label="Choose an encrypted file to open">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        <p class="dropzone-title" id="read-dz-title">Drag an encrypted file here</p>
+        <p class="dropzone-hint" id="read-dz-hint">or <span class="link">choose a file</span></p>
+        <input type="file" id="read-file-input" class="visually-hidden" />
+      </div>
+
+      <div class="field">
+        <label for="read-password">Password</label>
+        <div class="input-row">
+          <input type="password" id="read-password" autocomplete="current-password" placeholder="Enter the password used to encrypt this file" />
+          <button type="button" class="eye-btn" data-target="read-password" aria-label="Show password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="read-submit">Unlock</button>
+
+      <div class="status" id="read-status"></div>
+
+      <div class="viewer" id="read-viewer" style="display:none;">
+        <div class="viewer-head">
+          <span class="viewer-filename" id="read-viewer-filename"></span>
+        </div>
+        <div class="viewer-body" id="read-viewer-body"></div>
+        <div class="viewer-actions">
+          <button class="btn btn-secondary" id="read-download-btn">Download this file</button>
+          <button class="btn btn-secondary" id="read-another-btn">Open another file</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DECRYPT ================= -->
+  <section id="panel-decrypt" class="panel" role="tabpanel" aria-labelledby="tab-btn-decrypt">
+    <div class="card">
+      <p class="section-label">Encrypted file</p>
+      <div class="dropzone" id="decrypt-dropzone" tabindex="0" role="button" aria-label="Choose an encrypted file to decrypt">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        <p class="dropzone-title" id="decrypt-dz-title">Drag an encrypted file here</p>
+        <p class="dropzone-hint" id="decrypt-dz-hint">or <span class="link">choose a file</span></p>
+        <input type="file" id="decrypt-file-input" class="visually-hidden" />
+      </div>
+
+      <div class="field">
+        <label for="decrypt-password">Password</label>
+        <div class="input-row">
+          <input type="password" id="decrypt-password" autocomplete="current-password" placeholder="Enter the password used to encrypt this file" />
+          <button type="button" class="eye-btn" data-target="decrypt-password" aria-label="Show password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="decrypt-submit">Decrypt and download</button>
+
+      <div class="status" id="decrypt-status"></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Encryption: AES‑256‑GCM. Your password is stretched with PBKDF2 (SHA‑256, 600,000 rounds) before it's used as a key. A new random salt and IV are generated for every file.</p>
+    <p>There's no password recovery. If you forget a password, that file is permanently unreadable — nobody, including this tool, can get it back.</p>
+    <p>This is a separate, browser-based tool and its file format isn't compatible with the FEAR desktop app.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================================================
+     Crypto core -- verified independently against a Node test
+     suite (round trip, wrong password, tampering, edge cases)
+     before being placed here. See the project's test_crypto.js.
+     ============================================================ */
+
+  const MAGIC = "FEARW1";
+  const PBKDF2_ITERATIONS = 600000;
+  const SALT_LEN = 16;
+  const IV_LEN = 12;
+
+  function concatBytes(...arrays) {
+    const total = arrays.reduce((n, a) => n + a.length, 0);
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const a of arrays) { out.set(a, offset); offset += a.length; }
+    return out;
+  }
+
+  async function deriveKey(password, salt, usage) {
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]
+    );
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 },
+      false,
+      [usage]
+    );
+  }
+
+  async function encryptBytes(fileBytes, filename, mimeType, password) {
+    const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
+    const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
+    const key = await deriveKey(password, salt, "encrypt");
+
+    const meta = JSON.stringify({ name: filename, type: mimeType || "application/octet-stream" });
+    const metaBytes = new TextEncoder().encode(meta);
+    const metaLen = new Uint8Array(4);
+    new DataView(metaLen.buffer).setUint32(0, metaBytes.length, false);
+
+    const payload = concatBytes(metaLen, metaBytes, fileBytes);
+    const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, payload));
+
+    const magicBytes = new TextEncoder().encode(MAGIC);
+    return concatBytes(magicBytes, salt, iv, ciphertext);
+  }
+
+  async function decryptBytes(fileBytes, password) {
+    const magicBytes = new TextEncoder().encode(MAGIC);
+    const magicLen = magicBytes.length;
+
+    if (fileBytes.length < magicLen + SALT_LEN + IV_LEN) {
+      throw new Error("This file is too short to be a valid FEAR file.");
+    }
+    const gotMagic = new TextDecoder().decode(fileBytes.slice(0, magicLen));
+    if (gotMagic !== MAGIC) {
+      throw new Error("This doesn't look like a file encrypted with FEAR (Web).");
+    }
+
+    let offset = magicLen;
+    const salt = fileBytes.slice(offset, offset + SALT_LEN); offset += SALT_LEN;
+    const iv = fileBytes.slice(offset, offset + IV_LEN); offset += IV_LEN;
+    const ciphertext = fileBytes.slice(offset);
+
+    const key = await deriveKey(password, salt, "decrypt");
+
+    let decrypted;
+    try {
+      decrypted = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext));
+    } catch (e) {
+      throw new Error("Wrong password, or this file is corrupted.");
+    }
+
+    if (decrypted.length < 4) throw new Error("Wrong password, or this file is corrupted.");
+    const metaLen = new DataView(decrypted.buffer, decrypted.byteOffset, 4).getUint32(0, false);
+    if (4 + metaLen > decrypted.length) throw new Error("Wrong password, or this file is corrupted.");
+    const metaBytes = decrypted.slice(4, 4 + metaLen);
+    const meta = JSON.parse(new TextDecoder().decode(metaBytes));
+    const data = decrypted.slice(4 + metaLen);
+
+    return { name: meta.name, type: meta.type, data };
+  }
+
+  /* ============================================================
+     Small helpers
+     ============================================================ */
+
+  function humanFileSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    const units = ["KB", "MB", "GB", "TB"];
+    let i = -1;
+    do { bytes /= 1024; i++; } while (bytes >= 1024 && i < units.length - 1);
+    return bytes.toFixed(bytes < 10 ? 1 : 0) + " " + units[i];
+  }
+
+  const EXT_MIME = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif",
+    webp: "image/webp", bmp: "image/bmp", svg: "image/svg+xml", ico: "image/x-icon",
+    mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime", mkv: "video/x-matroska", m4v: "video/mp4",
+    mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4", flac: "audio/flac", weba: "audio/webm",
+    txt: "text/plain", md: "text/markdown", json: "application/json", csv: "text/csv",
+    html: "text/html", css: "text/css", js: "text/javascript", xml: "text/xml", yml: "text/yaml", yaml: "text/yaml",
+  };
+
+  const IMAGE_EXTS = new Set(["jpg","jpeg","png","gif","webp","bmp","svg","ico"]);
+  const VIDEO_EXTS = new Set(["mp4","webm","mov","mkv","m4v","ogv"]);
+  const AUDIO_EXTS = new Set(["mp3","wav","ogg","m4a","flac","weba","aac"]);
+  const TEXT_EXTS = new Set(["txt","md","csv","json","log","xml","yml","yaml","ini","conf","js","py","html","htm","css","c","cpp","h","java","ts","sh","rb","go","rs"]);
+
+  function extOf(name) {
+    const parts = name.split(".");
+    return parts.length > 1 ? parts.pop().toLowerCase() : "";
+  }
+
+  function resolveMime(name, storedType) {
+    if (storedType && storedType !== "application/octet-stream") return storedType;
+    return EXT_MIME[extOf(name)] || storedType || "application/octet-stream";
+  }
+
+  function classify(name, mime) {
+    const ext = extOf(name);
+    if ((mime && mime.startsWith("image/")) || IMAGE_EXTS.has(ext)) return "image";
+    if ((mime && mime.startsWith("video/")) || VIDEO_EXTS.has(ext)) return "video";
+    if ((mime && mime.startsWith("audio/")) || AUDIO_EXTS.has(ext)) return "audio";
+    if ((mime && mime.startsWith("text/")) || mime === "application/json" || TEXT_EXTS.has(ext)) return "text";
+    return "file";
+  }
+
+  function passwordStrength(pw) {
+    if (!pw) return { score: 0, label: "" };
+    let score = 0;
+    if (pw.length >= 8) score += 20;
+    if (pw.length >= 12) score += 15;
+    if (pw.length >= 16) score += 15;
+    if (/[a-z]/.test(pw)) score += 10;
+    if (/[A-Z]/.test(pw)) score += 10;
+    if (/[0-9]/.test(pw)) score += 10;
+    if (/[^A-Za-z0-9]/.test(pw)) score += 15;
+    if (/(.)\1{2,}/.test(pw)) score -= 10;
+    score = Math.max(0, Math.min(100, score));
+    let label = "Weak";
+    if (score >= 80) label = "Very strong";
+    else if (score >= 60) label = "Strong";
+    else if (score >= 35) label = "Okay";
+    return { score, label };
+  }
+
+  function triggerDownload(bytes, filename, mime) {
+    const blob = new Blob([bytes], { type: mime || "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  /* ============================================================
+     Tabs
+     ============================================================ */
+
+  const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
+  const panels = { encrypt: document.getElementById("panel-encrypt"), read: document.getElementById("panel-read"), decrypt: document.getElementById("panel-decrypt") };
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const name = btn.dataset.tab;
+      tabButtons.forEach((b) => b.setAttribute("aria-selected", String(b === btn)));
+      Object.entries(panels).forEach(([key, panel]) => panel.classList.toggle("active", key === name));
+    });
+  });
+
+  /* ============================================================
+     Password visibility toggles
+     ============================================================ */
+
+  document.querySelectorAll(".eye-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.target);
+      const show = input.type === "password";
+      input.type = show ? "text" : "password";
+      btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    });
+  });
+
+  /* ============================================================
+     Reusable dropzone wiring
+     ============================================================ */
+
+  function setupDropzone({ dropzoneId, inputId, titleId, hintId, onFile }) {
+    const dropzone = document.getElementById(dropzoneId);
+    const input = document.getElementById(inputId);
+    const title = document.getElementById(titleId);
+    const hint = document.getElementById(hintId);
+    let currentFile = null;
+
+    function openPicker() { input.click(); }
+
+    dropzone.addEventListener("click", (e) => {
+      if (e.target.closest(".dropzone-clear")) return;
+      openPicker();
+    });
+    dropzone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPicker(); }
+    });
+
+    ["dragenter", "dragover"].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("dragover"); })
+    );
+    ["dragleave", "drop"].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("dragover"); })
+    );
+    dropzone.addEventListener("drop", (e) => {
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) setFile(file);
+    });
+
+    input.addEventListener("change", () => {
+      if (input.files && input.files[0]) setFile(input.files[0]);
+    });
+
+    function setFile(file) {
+      currentFile = file;
+      dropzone.classList.add("has-file");
+      title.textContent = "File ready";
+      hint.innerHTML = "";
+      const nameEl = document.createElement("p");
+      nameEl.className = "dropzone-file";
+      nameEl.textContent = file.name + " · " + humanFileSize(file.size);
+      hint.appendChild(nameEl);
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "dropzone-clear";
+      clearBtn.textContent = "Choose a different file";
+      clearBtn.addEventListener("click", (e) => { e.stopPropagation(); reset(); });
+      hint.appendChild(clearBtn);
+      onFile(file);
+    }
+
+    function reset() {
+      currentFile = null;
+      input.value = "";
+      dropzone.classList.remove("has-file");
+      title.textContent = title.dataset.original;
+      hint.innerHTML = hint.dataset.original;
+      onFile(null);
+    }
+
+    title.dataset.original = title.textContent;
+    hint.dataset.original = hint.innerHTML;
+
+    return { reset, getFile: () => currentFile };
+  }
+
+  /* ============================================================
+     Status message helper
+     ============================================================ */
+
+  const ICONS = {
+    error: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>',
+    success: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-5"/><path d="M12 8h.01"/></svg>'
+  };
+
+  function setStatus(el, kind, message) {
+    if (!message) {
+      el.className = "status";
+      el.innerHTML = "";
+      return;
+    }
+    el.className = "status visible " + kind;
+    el.innerHTML = (ICONS[kind] || "") + "<span>" + message + "</span>";
+  }
+
+  function setBusy(button, busy, busyLabel) {
+    if (busy) {
+      button.dataset.originalLabel = button.textContent;
+      button.textContent = busyLabel;
+      button.disabled = true;
+    } else {
+      button.textContent = button.dataset.originalLabel || button.textContent;
+      button.disabled = false;
+    }
+  }
+
+  /* ============================================================
+     Encrypt panel
+     ============================================================ */
+
+  (function () {
+    const dz = setupDropzone({
+      dropzoneId: "encrypt-dropzone", inputId: "encrypt-file-input",
+      titleId: "encrypt-dz-title", hintId: "encrypt-dz-hint",
+      onFile: () => setStatus(statusEl, "info", ""),
+    });
+    const pwInput = document.getElementById("encrypt-password");
+    const pwConfirm = document.getElementById("encrypt-password-confirm");
+    const strengthWrap = document.getElementById("encrypt-strength");
+    const strengthFill = document.getElementById("encrypt-strength-fill");
+    const strengthLabel = document.getElementById("encrypt-strength-label");
+    const submitBtn = document.getElementById("encrypt-submit");
+    const statusEl = document.getElementById("encrypt-status");
+
+    pwInput.addEventListener("input", () => {
+      const pw = pwInput.value;
+      if (!pw) { strengthWrap.style.display = "none"; return; }
+      strengthWrap.style.display = "flex";
+      const { score, label } = passwordStrength(pw);
+      strengthFill.style.width = score + "%";
+      strengthFill.style.backgroundColor =
+        score >= 80 ? "var(--accent)" : score >= 60 ? "#3E8E68" : score >= 35 ? "var(--warn)" : "var(--danger)";
+      strengthLabel.textContent = label;
+      strengthLabel.style.color =
+        score >= 80 ? "var(--accent)" : score >= 60 ? "#3E8E68" : score >= 35 ? "var(--warn)" : "var(--danger)";
+    });
+
+    submitBtn.addEventListener("click", async () => {
+      const file = dz.getFile();
+      if (!file) { setStatus(statusEl, "error", "Choose a file first."); return; }
+      const pw = pwInput.value;
+      if (!pw) { setStatus(statusEl, "error", "Enter a password."); return; }
+      if (pw !== pwConfirm.value) { setStatus(statusEl, "error", "Passwords don't match."); return; }
+      if (passwordStrength(pw).score < 35) {
+        const proceed = confirm("This password looks weak — the encryption is only as strong as your password. Use it anyway?");
+        if (!proceed) return;
+      }
+
+      setBusy(submitBtn, true, "Encrypting…");
+      setStatus(statusEl, "info", "Encrypting " + file.name + "…");
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const out = await encryptBytes(bytes, file.name, file.type, pw);
+        triggerDownload(out, file.name + ".encrypted", "application/octet-stream");
+        setStatus(statusEl, "success", "Encrypted. Your download should start automatically as " + file.name + ".encrypted");
+      } catch (e) {
+        setStatus(statusEl, "error", "Something went wrong: " + e.message);
+      } finally {
+        setBusy(submitBtn, false);
+        pwInput.value = "";
+        pwConfirm.value = "";
+        strengthWrap.style.display = "none";
+      }
+    });
+  })();
+
+  /* ============================================================
+     Decrypt panel
+     ============================================================ */
+
+  (function () {
+    const dz = setupDropzone({
+      dropzoneId: "decrypt-dropzone", inputId: "decrypt-file-input",
+      titleId: "decrypt-dz-title", hintId: "decrypt-dz-hint",
+      onFile: () => setStatus(statusEl, "info", ""),
+    });
+    const pwInput = document.getElementById("decrypt-password");
+    const submitBtn = document.getElementById("decrypt-submit");
+    const statusEl = document.getElementById("decrypt-status");
+
+    submitBtn.addEventListener("click", async () => {
+      const file = dz.getFile();
+      if (!file) { setStatus(statusEl, "error", "Choose an encrypted file first."); return; }
+      const pw = pwInput.value;
+      if (!pw) { setStatus(statusEl, "error", "Enter the password."); return; }
+
+      setBusy(submitBtn, true, "Decrypting…");
+      setStatus(statusEl, "info", "Decrypting…");
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const result = await decryptBytes(bytes, pw);
+        const mime = resolveMime(result.name, result.type);
+        triggerDownload(result.data, result.name, mime);
+        setStatus(statusEl, "success", "Decrypted. Saved as " + result.name);
+      } catch (e) {
+        setStatus(statusEl, "error", e.message);
+      } finally {
+        setBusy(submitBtn, false);
+        pwInput.value = "";
+      }
+    });
+  })();
+
+  /* ============================================================
+     Read panel -- unlock, then render an inline viewer
+     ============================================================ */
+
+  (function () {
+    const dz = setupDropzone({
+      dropzoneId: "read-dropzone", inputId: "read-file-input",
+      titleId: "read-dz-title", hintId: "read-dz-hint",
+      onFile: () => setStatus(statusEl, "info", ""),
+    });
+    const pwInput = document.getElementById("read-password");
+    const submitBtn = document.getElementById("read-submit");
+    const statusEl = document.getElementById("read-status");
+    const viewer = document.getElementById("read-viewer");
+    const viewerFilename = document.getElementById("read-viewer-filename");
+    const viewerBody = document.getElementById("read-viewer-body");
+    const downloadBtn = document.getElementById("read-download-btn");
+    const anotherBtn = document.getElementById("read-another-btn");
+
+    let currentObjectUrl = null;
+    let currentResult = null;
+
+    function revokeCurrentUrl() {
+      if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
+    }
+
+    function genericIcon() {
+      return '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+    }
+
+    async function renderViewer(result) {
+      revokeCurrentUrl();
+      viewerBody.innerHTML = "";
+      viewerFilename.textContent = result.name;
+      const mime = resolveMime(result.name, result.type);
+      const kind = classify(result.name, mime);
+      const blob = new Blob([result.data], { type: mime });
+
+      if (kind === "image") {
+        currentObjectUrl = URL.createObjectURL(blob);
+        const img = document.createElement("img");
+        img.src = currentObjectUrl;
+        img.alt = result.name;
+        viewerBody.appendChild(img);
+      } else if (kind === "video") {
+        currentObjectUrl = URL.createObjectURL(blob);
+        const video = document.createElement("video");
+        video.src = currentObjectUrl;
+        video.controls = true;
+        viewerBody.appendChild(video);
+      } else if (kind === "audio") {
+        currentObjectUrl = URL.createObjectURL(blob);
+        const wrap = document.createElement("div");
+        wrap.className = "viewer-audio-wrap";
+        const audio = document.createElement("audio");
+        audio.src = currentObjectUrl;
+        audio.controls = true;
+        wrap.appendChild(audio);
+        viewerBody.appendChild(wrap);
+      } else if (kind === "text") {
+        const pre = document.createElement("pre");
+        pre.className = "viewer-text";
+        if (result.data.length > 2 * 1024 * 1024) {
+          pre.textContent = "This text file is large (" + humanFileSize(result.data.length) + "). Download it to view the full contents.";
+        } else {
+          pre.textContent = new TextDecoder("utf-8", { fatal: false }).decode(result.data);
+        }
+        viewerBody.appendChild(pre);
+      } else {
+        const wrap = document.createElement("div");
+        wrap.className = "viewer-generic";
+        wrap.innerHTML =
+          genericIcon() +
+          '<div><div class="viewer-generic-name">' + escapeHtml(result.name) + '</div>' +
+          '<div class="viewer-generic-meta">' + humanFileSize(result.data.length) + (mime ? " · " + escapeHtml(mime) : "") + "</div></div>";
+        viewerBody.appendChild(wrap);
+      }
+
+      viewer.style.display = "block";
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    submitBtn.addEventListener("click", async () => {
+      const file = dz.getFile();
+      if (!file) { setStatus(statusEl, "error", "Choose an encrypted file first."); return; }
+      const pw = pwInput.value;
+      if (!pw) { setStatus(statusEl, "error", "Enter the password."); return; }
+
+      setBusy(submitBtn, true, "Unlocking…");
+      setStatus(statusEl, "info", "Unlocking…");
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const result = await decryptBytes(bytes, pw);
+        currentResult = result;
+        await renderViewer(result);
+        setStatus(statusEl, "success", "Unlocked " + result.name);
+      } catch (e) {
+        setStatus(statusEl, "error", e.message);
+        viewer.style.display = "none";
+      } finally {
+        setBusy(submitBtn, false);
+        pwInput.value = "";
+      }
+    });
+
+    downloadBtn.addEventListener("click", () => {
+      if (!currentResult) return;
+      const mime = resolveMime(currentResult.name, currentResult.type);
+      triggerDownload(currentResult.data, currentResult.name, mime);
+    });
+
+    anotherBtn.addEventListener("click", () => {
+      revokeCurrentUrl();
+      currentResult = null;
+      viewer.style.display = "none";
+      viewerBody.innerHTML = "";
+      dz.reset();
+      setStatus(statusEl, "info", "");
+      pwInput.value = "";
+    });
+  })();
+
+})();
+</script>
+</body>
+</html>
